@@ -604,31 +604,28 @@ lrt_45min_mod = lrt_45min
 lrt_45min_mod$FC_45min = 2^(lrt_45min_mod$logFC_45min)
 lrt_45min_rand = filter(lrt_45min_mod, Gene == "randomized")
 
-mean_45min = round(mean(lrt_45min_rand$FC_45min, na.rm = TRUE), digits = 2)
-log_mean45min = log(mean_45min,2)
-SD_45min = round(sd(lrt_45min_rand$FC_45min, na.rm = TRUE), digits = 2)
-log_SD45min = log(SD_45min, 2)
+mean_45min = round(mean(lrt_45min_rand$logFC_45min, na.rm = TRUE), digits = 2)
+SD_45min = round(sd(lrt_45min_rand$logFC_45min, na.rm = TRUE), digits = 2)
 
+lrt_45min = filter(lrt_45min_mod, !Gene == "randomized")
 
-p1 = ggplot(data = lrt_45min_rand, aes(x = FC_45min)) +
+p1 = ggplot(data = lrt_45min_rand, aes(x = logFC_45min)) +
   geom_histogram(binwidth = 0.1, alpha = 0.5, position = "identity")+
-  labs(title = "Distribution of FC of randomized sgRNA in 45-minutes selection",
-       x = "Fold Change",
+  labs(title = "Distribution of log2FC of randomized sgRNA in 45-minutes selection",
+       x = "Log2 Fold Change",
        y = "Number of sgRNA count") +
-  
   geom_vline(xintercept = c(mean_45min), linetype = "solid", color = "pink")+
-  geom_vline(xintercept = 1, linetype = "solid", color = "black") +
-  geom_vline(xintercept = c(mean_45min+SD_45min, mean_45min-SD_45min), linetype = "dashed",color = "#488286") +
-  annotate("text", x = 3, y=200, label = paste0("Mean = ",mean_45min)) +
-  annotate("text", x = 3, y=150, label = paste0("SD = ", SD_45min)) +
-  annotate("text", x = 3, y=100, label = paste0("Depleted sgRNA = ",349)) +
+  geom_vline(xintercept = 0, linetype = "solid", color = "black") +
+  geom_vline(xintercept = c(mean_45min+sd_45min, mean_45min-sd_45min), linetype = "dashed",color = "#488286") +
+  annotate("text", x = -2, y=10, label = paste0("Mean = ",mean_45min)) +
+  annotate("text", x = -2, y=8, label = paste0("SD = ", sd_45min)) +
+  annotate("text", x = -2, y=6, label = paste0("Depleted sgRNA = ",349)) +
   theme_bw() +
   theme(panel.grid.major=element_blank())+
   theme(panel.grid.minor=element_blank())+
   theme(strip.background=element_blank())
 p1
-
-pdf(file = "20231228_FC_randomdist_45min.pdf",width = 8, height = 6)
+pdf(file = "20240103_logFC_randomdist_45min_v2.pdf",width = 8, height = 6)
 p1
 dev.off()
 
@@ -659,50 +656,28 @@ dev.off()
 ## 2-hr ------------
 lrt_2hr_mod = lrt_2hr
 lrt_2hr_rand = filter(lrt_2hr_mod, Gene == "randomized")
-lrt_2hr_rand$FC_2hr = 2^lrt_2hr_rand$logFC_2hr
 
-mean_2hr = round(mean(lrt_2hr_rand$FC_2hr, na.rm = TRUE), digits = 2)
-SD_2hr = round(sd(lrt_2hr_rand$FC_2hr, na.rm = TRUE), digits = 2)
-
-p2 = ggplot(data = lrt_2hr_rand , aes(x=FC_2hr)) +
-  geom_histogram(binwidth = 0.1, alpha = 0.5, position = "identity")+
-  labs(title = "Distribution of FC of randomized sgRNA in 2-hours selection",
-       x = "Log2 Fold Change",
-       y = "Number of sgRNA count") +
-  geom_vline(xintercept = c(mean_2hr), linetype = "solid", color = "pink")+
-  geom_vline(xintercept = 1, linetype = "solid", color = "black") +
-  geom_vline(xintercept = c(mean_2hr+SD_2hr, mean_2hr-SD_2hr), linetype = "dashed",color = "#488286") +
-  annotate("text", x = 3, y=200, label = paste0("Mean = ", mean_2hr)) +
-  annotate("text", x = 3, y=150, label = paste0("SD = ",SD_2hr)) +
-  annotate("text", x = 3, y=100, label = paste0("Depleted sgRNA = ",357)) +
-  theme_bw() +
-  theme(panel.grid.major=element_blank())+
-  theme(panel.grid.minor=element_blank())+
-  theme(strip.background=element_blank())
-p2
-pdf(file = "20231228_FCdist_randomsgRNA_2hr.pdf",width = 8, height = 6)
-p2
-dev.off()
-
-logmean_2 = log(mean_2hr,2)
-logSD_2 = log(SD_2hr,2)
+mean_2hr = round(mean(lrt_2hr_rand$logFC_2hr, na.rm = TRUE), digits = 2)
+sd_2hr = round(sd(lrt_2hr_rand$logFC_2hr, na.rm = TRUE), digits = 2)
 
 p2 = ggplot(data = lrt_2hr_rand , aes(x=logFC_2hr)) +
+  # geom_point(shape = 20, alpha = 1) +
   geom_histogram(binwidth = 0.1, alpha = 0.5, position = "identity")+
   labs(title = "Distribution of log2FC of randomized sgRNA in 2-hours selection",
        x = "Log2 Fold Change",
        y = "Number of sgRNA count") +
-  geom_vline(xintercept = logmean_2, linetype = "solid", color = "pink")+
-  geom_vline(xintercept = c(logmean_2+logSD_2, logmean_2-logSD_2), linetype = "dashed",color = "#488286") +
-  annotate("text", x = 0, y=10, label = paste0("Mean = ",round(logmean_2, digits = 2))) +
-  annotate("text", x = 0, y=9, label = paste0("SD = ",round(logSD_2, digits = 2))) +
-  annotate("text", x = 0, y=8, label = paste0("Depleted sgRNA = ",357)) +
+  geom_vline(xintercept = c(mean_2hr), linetype = "solid", color = "pink")+
+  geom_vline(xintercept = 0, linetype = "solid", color = "black") +
+  geom_vline(xintercept = c(mean_2hr+sd_2hr, mean_2hr-sd_2hr), linetype = "dashed",color = "#488286") +
+  annotate("text", x = -2, y=10, label = paste0("Mean = ", mean_2hr)) +
+  annotate("text", x = -2, y=8, label = paste0("SD = ",sd_2hr)) +
+  annotate("text", x = -2, y=6, label = paste0("Depleted sgRNA = ",357)) +
   theme_bw() +
   theme(panel.grid.major=element_blank())+
   theme(panel.grid.minor=element_blank())+
   theme(strip.background=element_blank())
 p2
-pdf(file = "20231228_logmeanFCdist_randomsgRNA_2hr.pdf",width = 8, height = 6)
+pdf(file = "20240103_logFCdist_randomsgRNA_2hr_v2.pdf",width = 8, height = 6)
 p2
 dev.off()
 
@@ -734,8 +709,9 @@ function_finaltbl = function(lrtcountable, hostfull, hostshort, adj_method, thre
   
   tblnew = tblnew[,-1]
   tbl_merge = merge(tblnew, sumFC, by = "Gene")
-  tbl_merge$Expression = ifelse(tbl_merge$logFC > (mean_rand + abs(sd_rand)) & tbl_merge$PValue <= threshold, "Up/More Phage",
-                                ifelse(tbl_merge$logFC <  (mean_rand - abs(sd_rand)) & tbl_merge$PValue <= threshold, "Down/Less Phage", "Unchanged"))
+  tbl_merge$Expression = ifelse(tbl_merge$logFC > (mean_rand + sd_rand) &tbl_merge$logFC > 0 & tbl_merge$PValue <= threshold, "Up/More Phage",
+                                ifelse(tbl_merge$logFC > (mean_rand + sd_rand) &tbl_merge$logFC < 0 & tbl_merge$PValue <= threshold, "Up/More Phage_2",
+                                       ifelse(tbl_merge$logFC <  (mean_rand - sd_rand) & tbl_merge$PValue <= threshold, "Down/Less Phage", "Unchanged")))
   tbl_merge$neglogPValue = -log(tbl_merge$PValue, 10)
   
   finalresname = paste0(hostshort,"_combinedpvaluelogFC_",threshold,".csv")
@@ -746,12 +722,15 @@ function_finaltbl = function(lrtcountable, hostfull, hostshort, adj_method, thre
     geom_point(aes(color = Expression), size = 1) +
     xlab(expression("log"[2]*"FC")) +
     ylab(expression("-log"[10]*"FDR")) +
-    scale_color_manual(values = c("#BEBEBE", "#BEBEBE", "#2F9599")) +
+    scale_color_manual(values = c("#BEBEBE", "#BEBEBE","#2F9599", "#A3A6CC")) +
     guides(colour = guide_legend(override.aes = list(size=1.5))) +
     geom_hline(yintercept = -log(threshold,10), linetype = "dashed") +
-    geom_vline(xintercept = c(mean_rand, mean_rand + sd_rand, mean_rand - sd_rand), linetype = "dashed") +
+    geom_vline(xintercept = c(mean_rand + sd_rand, mean_rand - sd_rand), linetype = "dashed") +
+    geom_vline(xintercept = c(mean_rand), linetype = "solid", color = "pink") +
+    geom_vline(xintercept = 0, linetype = "solid", color = "grey") +
+    # geom_vline(xintercept = c(mean_rand, mean_rand + 2*sd_rand, mean_rand - 2*sd_rand), linetype = "dashed") +
     ggtitle(label = plottitlename) +
-    geom_text_repel(data = tbl_merge[which(tbl_merge$Expression %in% c("Up/More Phage")),],
+    geom_text_repel(data = tbl_merge[which(tbl_merge$Expression %in% c("Up/More Phage", "Up/More Phage_2")),],
                     aes(x=logFC, y=neglogPValue, label = Gene), size = 3,
                     min.segment.length = 0.1,
                     na.rm = TRUE,
@@ -764,19 +743,21 @@ function_finaltbl = function(lrtcountable, hostfull, hostshort, adj_method, thre
     theme(legend.position="none")
   return(p1)
 }
+# randomized dataset will not be averaged and combined to plot here
 O121_run = function_finaltbl(lrtcountable = lrt_45min, hostfull = "O121",
                              hostshort = "O121", adj_method = "fdr", threshold = 0.05,
-                             mean_rand = logmean_45,sd_rand = logSD_45)
-
+                             mean_rand = mean_45min,sd_rand = sd_45min)
 O121_run
-pdf(file = "20231212_test_big_logscale.pdf", width = 20, height = 14.5)
+pdf(file = "20240103_test_big_logscale_v2expand.pdf", width = 20, height = 13)
 print(O121_run)
 dev.off()
 
 # noted that when you run this, you can remove scale transformation log
-O121_2hr = function_finaltbl(lrtcountable = lrt_2hr, hostfull = "O121",
+lrt_2hr_filter = filter(lrt_2hr, !Gene == "randomized")
+O121_2hr = function_finaltbl(lrtcountable = lrt_2hr_filter, hostfull = "O121",
                              hostshort = "O121", adj_method = "fdr", threshold = 0.05,
-                             mean_rand = logmean_2,sd_rand = logSD_2)
-O121_2hr
+                             mean_rand = mean_2hr ,sd_rand = sd_2hr)
 
-
+pdf(file = "20240103_O121_2hr_v3expand.pdf", width = 15, height = 13)
+print(O121_2hr)
+dev.off()
