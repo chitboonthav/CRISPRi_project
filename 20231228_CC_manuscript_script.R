@@ -327,55 +327,52 @@ BL_rand$FC_BL <- 2^(BL_rand$logFC_BL)
 # We calculate mean of FC because it is a real effect not a log-transformed data
 # the mean and SD will be log-transformed as a reference for determining significance of the gene
 
-mean_BW = mean(x = BW_rand$FC_BW, na.rm = TRUE) 
-log_mean_BW = round(log(mean_BW, 2), digits = 2)
-sd_BW = sd(x = BW_rand$FC_BW, na.rm=TRUE)
-log_sd_BW = round(log(sd_BW,2), digits = 2)
-  
-mean_BL = mean(x = BL_rand$FC_BL, na.rm = TRUE)
-log_mean_BL = round(log(mean_BL, 2), digits = 2)
-sd_BL = sd(x = BL_rand$FC_BL, na.rm=TRUE)
-log_sd_BL = round(log(sd_BL,2), digits = 2)
+mean_BW = round(mean(BW_indi_sgRNA$logFC_BW, na.rm = TRUE), digits = 2)
+sd_BW = round(sd(BW_indi_sgRNA$logFC_BW, na.rm = TRUE), digits = 2)
+mean_BL = round(mean(BL_indi_sgRNA$logFC_BL, na.rm = TRUE), digits = 2)
+sd_BL = round(sd(BL_indi_sgRNA$logFC_BL, na.rm = TRUE), digits = 2)
 
 # this section is to make histogram for randomized distribution 
 # I decided to plot 
 #BW25113
-p1 = ggplot(data = BW_rand, aes(x = FC_BW)) +
+p1 = ggplot(data = BW_rand, aes(x = logFC_BW)) +
   geom_histogram(binwidth = 0.1, alpha = 0.5, position = "identity", color = "black")+
-  labs(title = "Distribution of FC of randomized sgRNA in BW25113 selection (CPM15)",
-       x = "Fold Change",
+  labs(title = "Distribution of log2FC of randomized sgRNA in BW25113 selection (CPM15)",
+       x = "Log2 Fold Change",
        y = "Number of sgRNA count") +
   geom_vline(xintercept = c(mean_BW-sd_BW, mean_BW+sd_BW), linetype = "dashed", color = "#488286")+
   geom_vline(xintercept = mean_BW, linetype = "solid", color = "pink")+
-  geom_vline(xintercept = 1)+
-  annotate("text", x = 3, y=40, label = paste0("Mean FC = ",round(mean_BW, digits = 2))) +
-  annotate("text", x = 3, y=35, label = paste0("SD FC = ", round(sd_BW, digits = 2)))+
+  geom_vline(xintercept = 0)+
+  annotate("text", x = -6, y=40, label = paste0("Mean = ",round(mean_BW, digits = 2))) +
+  annotate("text", x = -6, y=35, label = paste0("SD = ", round(sd_BW, digits = 2)))+
+  xlim(-8.5,3)+
   theme_bw() +
   theme(panel.grid.major=element_blank())+
   theme(panel.grid.minor=element_blank())+
   theme(strip.background=element_blank())
 p1
-pdf(file = "20231228_dist_randomized_BW_CPM15_unpaired_FC.pdf",width = 8, height = 6)
+pdf(file = "20240103_dist_randomized_BW_CPM15_unpaired_logFC.pdf",width = 8, height = 6)
 p1
 dev.off()
 
 #BL21
-p5 = ggplot(data = BL_rand, aes(x = FC_BL)) +
+p5 = ggplot(data = BL_rand, aes(x = logFC_BL)) +
   geom_histogram(binwidth = 0.1, alpha = 0.5, position = "identity", color = "black")+
-  labs(title = "Distribution of FC of randomized sgRNA in BL21 selection (CPM15)",
-       x = "Fold Change",
+  labs(title = "Distribution of log2FC of randomized sgRNA in BL21 selection (CPM15)",
+       x = "Log2 Fold Change",
        y = "Number of sgRNA count") +
   geom_vline(xintercept = c(mean_BL), linetype = "solid", color = "pink")+
   geom_vline(xintercept = c(mean_BL-sd_BL, mean_BL+sd_BL), linetype = "dashed", color = "#488286")+
-  geom_vline(xintercept = 1)+
-  annotate("text", x = 3, y=60, label = paste0("Mean FC = ",round(mean_BL, digits = 2))) +
-  annotate("text", x = 3, y=55, label = paste0("SD FC = ",round(sd_BL, digits = 2)))+
+  geom_vline(xintercept = 0)+
+  annotate("text", x = -6, y=60, label = paste0("Mean = ",round(mean_BL, digits = 2))) +
+  annotate("text", x = -6, y=55, label = paste0("SD = ",round(sd_BL, digits = 2)))+
+  xlim(-8.5,3)+
   theme_bw() +
   theme(panel.grid.major=element_blank())+
   theme(panel.grid.minor=element_blank())+
   theme(strip.background=element_blank())
 p5
-pdf(file = "20231228_unpaired_dist_randomized_BL_FC.pdf",width = 8, height = 6)
+pdf(file = "20240103_unpaired_dist_randomized_BL_logFC.pdf",width = 8, height = 6)
 p5
 dev.off()
 
@@ -447,28 +444,28 @@ function_finaltbl = function(lrtcountable, hostfull, hostshort, adj_method, thre
 #mean_rand: the log of mean of fold change of randomized sgRNA data
 
 testrun_BW = function_finaltbl(
-  lrtcountable = res_lrt_BW_merge, 
+  lrtcountable = BW_indi_sgRNA, 
   hostfull = "BW25113",
   hostshort = "BW",
   adj_method = "fdr",
   threshold = 0.05,
-  sd_rand = abs(log(sd_BW,2)), #it has to be an absolute number of SD to be used as a reference
-  mean_rand = log(mean_BW,2)) # this is log-transformed
+  sd_rand = sd_BW, #it has to be an absolute number of SD to be used as a reference
+  mean_rand = mean_BW) # this is log-transformed
 
-pdf(file = "20231228_BW_CPM15_filterRandom_attheEnd_redo.pdf", width = 9, height = 6.5)
+pdf(file = "20240103_BW_CPM15_filterRandom_v2.pdf", width = 9, height = 6.5)
 print(testrun_BW)
 dev.off()
 
 testrun_BL = function_finaltbl(
-  lrtcountable = res_lrt_BL_merge,
+  lrtcountable = BL_indi_sgRNA,
   hostfull = "BL21",
   hostshort = "BL",
   adj_method = "fdr",
   threshold = 0.05,
-  sd_rand = abs(log(sd_BL,2)),
-  mean_rand = log(mean_BL,2))
+  sd_rand = sd_BL,
+  mean_rand = mean_BL)
 
-pdf(file = "20231228_BL_CPM15_filterRandom_attheEnd_redo_new.pdf", width = 9, height = 6.5)
+pdf(file = "20230103_BL_CPM15_filterRandom_attheEnd_v2.pdf", width = 9, height = 6.5)
 print(testrun_BL)
 dev.off()
 
