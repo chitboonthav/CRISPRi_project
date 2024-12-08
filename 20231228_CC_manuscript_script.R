@@ -761,3 +761,184 @@ O121_2hr = function_finaltbl(lrtcountable = lrt_2hr_filter, hostfull = "O121",
 pdf(file = "20240103_O121_2hr_v3expand.pdf", width = 15, height = 13)
 print(O121_2hr)
 dev.off()
+
+# Re-analysis of O121 data after removing top gene hits relevant to surface strucutre 
+tbl1 = O121
+hitlist = read.csv(file = "/Users/chutikarnchitboonthavisuk/Desktop/Current/Sequencing_Work/20230509_clinicalstrain/merge_45min_O121_aminoacid_dedup_manuallyedited.csv",
+                   header = TRUE) #this dataset can be provided upon requested
+tophit_outer2 = hitlist %>% filter(GO_term %in% c("outer","unknown_outer","secretion_system")) 
+removelist = list(tophit_outer2$Gene)
+subset_tbl = tbl1 %>% filter(!Gene %in% tophit_outer2$Gene)
+newO121list = subset_tbl[,1:2]
+
+x = subset_tbl[, grep(("sgRNA|45m"), names(subset_tbl))]
+colnames(x) = c("sgRNA", "O121_noPhage_45m_1", "O121_PhageMOI1_45m_1", "O121_PhageMOI2_45m_1",
+                "O121_noPhage_45m_2", "O121_noPhage_45m_3","O121_PhageMOI2_45m_2", "O121_PhageMOI2_45m_3")
+col_order <- c("sgRNA","O121_noPhage_45m_1", "O121_noPhage_45m_2", "O121_noPhage_45m_3",
+               "O121_PhageMOI1_45m_1", "O121_PhageMOI2_45m_1", "O121_PhageMOI2_45m_2", "O121_PhageMOI2_45m_3")
+count_x = x[, col_order]
+count_x = count_x[, grep(("sgRNA|noPhage|PhageMOI2"), names(count_x))]
+
+row.names(count_x) = count_x$sgRNA
+count_x = as.matrix(count_x)
+count_x = count_x[,2:7]
+count_x = as.data.frame(count_x)
+count_x$O121_noPhage_45m_1 <- as.numeric(count_x$O121_noPhage_45m_1)
+count_x$O121_noPhage_45m_2 <- as.numeric(count_x$O121_noPhage_45m_2)
+count_x$O121_noPhage_45m_3 <- as.numeric(count_x$O121_noPhage_45m_3)
+count_x$O121_PhageMOI2_45m_1 <- as.numeric(count_x$O121_PhageMOI2_45m_1)
+count_x$O121_PhageMOI2_45m_2 <- as.numeric(count_x$O121_PhageMOI2_45m_2)
+count_x$O121_PhageMOI2_45m_3 <- as.numeric(count_x$O121_PhageMOI2_45m_3)
+
+CPMcutoff = 3
+  
+group = c(rep("control", 3), rep("treatment", 3))
+DGE_list = DGEList(count = count_x, group = group)
+keep <- rowSums(cpm(DGE_list$count[,1:3])>CPMcutoff) >=3
+DGE_list <- DGE_list[keep, , keep.lib.size = FALSE]
+
+### making design matrix 
+designtbl <- data.frame()
+sample <- colnames(count_x)
+subject <- factor(c(1,2,3,1,2,3))
+treatment <- factor(c("C","C","C","T","T","T"))
+designtbl <- data.frame(sample, subject, treatment)
+
+Subject <- factor(designtbl$subject)
+Treat <- factor(designtbl$treatment, levels = c("C","T"))
+design <- model.matrix(~Subject+Treat)
+
+DGE_list <- estimateDisp(DGE_list, design)
+fit <- glmQLFit(DGE_list, design)
+lrt <- glmQLFTest(fit)
+
+test_lrt = lrt$table
+test_lrt$sgRNA = row.names(test_lrt)
+test_lrt_merge = merge(newO121list, test_lrt,by = "sgRNA", all.x = TRUE)
+
+write.csv(x = test_lrt_merge, file = "45min_lrt_CPM3_paired_removeTophit_outerall.csv", row.names = FALSE)
+test_lrt_merge = read.csv(file = "45min_lrt_CPM3_paired_removeTophit_outerall.csv", header = TRUE)
+lrt_45min = test_lrt_merge
+
+# calculate randomized data as a reference
+#randomized data 
+random_lrt = filter(test_lrt_merge, Gene == "randomized")
+sd_randomized = round(sd(x = random_lrt$logFC, na.rm=TRUE), digits = 2)
+mean_randomized = round(mean(x = random_lrt$logFC, na.rm=TRUE), digits = 2)
+
+
+sd_rand = sd_randomized
+mean_rand = mean_randomized
+
+rand_hist = ggplot(data = random_lrt, aes(x = logFC)) +
+  geom_histogram(binwidth = 0.1, alpha = 0.5, position = "identity", color = "black")+
+  labs(title = "Distribution of logFC of randomized sgRNA O121 (Top hit removal)",
+       x = "log Fold Change",
+       y = "number of sgRNA count") +
+  geom_vline(xintercept = c(mean_rand -sd_rand,mean_rand +sd_rand), linetype = "dashed", color = "#488286")+
+  geom_vline(xintercept = mean_rand , linetype = "dashed", color = "pink")+
+  geom_vline(xintercept = 0)+
+  annotate("text", x = -2, y=11, label = paste0("SD = ",sd_rand)) +
+  annotate("text", x = -2, y=12, label = paste0("Mean = ",mean_rand ))+
+  annotate("text", x = -2, y=10, label = paste0("Depleted sgRNA = 346"))+
+  theme_bw() +
+  theme(panel.grid.major=element_blank())+
+  theme(panel.grid.minor=element_blank())+
+  theme(strip.background=element_blank())
+
+pdf(file = "20240729_random_tophitremoval_outerall.pdf",width = 10, height = 7)
+rand_hist
+dev.off()
+
+lrt_modified = lrt_45min %>% filter(Gene != "randomized")
+
+function_finaltbl = function(lrtcountable, hostfull, hostshort, adj_method, threshold, mean_rand, sd_rand){
+  list_gene = unique(newO121list['Gene'])
+  list_gene = as.data.frame(list_gene)
+  main_table = matrix(c('Gene','PValue'), ncol=2)
+  j =0
+  for( i in 1:nrow(list_gene)){
+    print(list_gene[i,])
+    filtertbl = filter(lrtcountable, Gene == list_gene[i,])
+    filtertbl$adjPValue = p.adjust(filtertbl$PValue, method = adj_method)
+    combinedPvaluetbl = sumz(filtertbl$adjPValue, na.action = na.omit)
+    main_table <- rbind(main_table, list(list_gene[i,], combinedPvaluetbl$p))
+  }
+  combinetbl = main_table
+  colnames(combinetbl) = combinetbl[1,]
+  combinetbl = combinetbl[-1,]
+  filenametbl = paste0(hostshort,"_combinedpvalue.csv")
+  write.csv(combinetbl, file = filenametbl)
+  tblnew = read.csv(file = filenametbl, header = TRUE)
+  
+  lrtprocess = lrtcountable
+  lrtprocess$FC = 2^(lrtprocess$logFC)
+  sumFC <- lrtprocess %>%  group_by(Gene) %>%  summarise_at(vars(FC), list(avg_FC = mean, SD_FC = sd), na.rm = TRUE)
+  sumFC$logFC = log(sumFC$avg_FC,2)
+  
+  tblnew = tblnew[,-1]
+  tbl_merge = merge(tblnew, sumFC, by = "Gene")
+  tbl_merge$Expression = ifelse(tbl_merge$logFC > (mean_rand + sd_rand) &tbl_merge$logFC > 0 & tbl_merge$PValue <= threshold, "Up/More Phage",
+                                ifelse(tbl_merge$logFC > (mean_rand + sd_rand) &tbl_merge$logFC < 0 & tbl_merge$PValue <= threshold, "Up/More Phage_2",
+                                       ifelse(tbl_merge$logFC <  (mean_rand - sd_rand) & tbl_merge$PValue <= threshold, "Down/Less Phage", "Unchanged")))
+  tbl_merge$neglogPValue = -log(tbl_merge$PValue, 10)
+  
+  finalresname = paste0(hostshort,"_combinedpvaluelogFC_",threshold,".csv")
+  write.csv(tbl_merge, file = finalresname, row.names = FALSE)
+  plottitlename = paste0(hostfull," phage selection p-value threshold = ", threshold)
+  
+  p1 = ggplot(tbl_merge, aes(x=logFC, y=neglogPValue)) +
+    geom_point(aes(color = Expression), size = 1) +
+    xlab(expression("log"[2]*"FC")) +
+    ylab(expression("-log"[10]*"FDR")) +
+    scale_color_manual(values = c("#BEBEBE", "#BEBEBE","#2F9599", "#A3A6CC")) +
+    guides(colour = guide_legend(override.aes = list(size=1.5))) +
+    geom_hline(yintercept = -log(threshold,10), linetype = "dashed") +
+    geom_vline(xintercept = c(mean_rand + sd_rand, mean_rand - sd_rand), linetype = "dashed") +
+    geom_vline(xintercept = c(mean_rand), linetype = "solid", color = "pink") +
+    geom_vline(xintercept = 0, linetype = "solid", color = "grey") +
+    # geom_vline(xintercept = c(mean_rand, mean_rand + 2*sd_rand, mean_rand - 2*sd_rand), linetype = "dashed") +
+    ggtitle(label = plottitlename) +
+    geom_text_repel(data = tbl_merge[which(tbl_merge$Expression %in% c("Up/More Phage", "Up/More Phage_2")),],
+                    aes(x=logFC, y=neglogPValue, label = Gene), size = 3,
+                    min.segment.length = 0.1,
+                    na.rm = TRUE,
+                    show.legend = FALSE,
+                    fontface = "italic")+
+    # scale_y_continuous(trans='log10')+
+    theme_bw()+
+    theme(panel.grid.major=element_blank())+
+    theme(panel.grid.minor=element_blank())+
+    theme(legend.key=element_blank())+
+    theme(legend.position="none")
+  return(p1)
+}
+
+O121_run = function_finaltbl(lrtcountable = lrt_modified, hostfull = "O121 remove tophit outer all removed",
+                             hostshort = "20240929_O121_norand_mod_outerallremv", adj_method = "fdr", threshold = 0.05,
+                             mean_rand = mean_rand, sd_rand = sd_rand)
+pdf(file = "20240929_O121_tophits_outerallandunk_removed.pdf", width = 8.97, height = 8.5)
+print(O121_run)
+dev.off()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
