@@ -4,3 +4,4 @@
 - Sequencing data was paired using FLASH (v1.2.11)
 - Sequences were filtered using VSEARCH
 - The abundance of individual sgRNA was calculated by MAGeCK 
+- Dataset files is available upon requested
