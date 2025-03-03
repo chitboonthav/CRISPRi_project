@@ -921,14 +921,123 @@ pdf(file = "20240929_O121_tophits_outerallandunk_removed.pdf", width = 8.97, hei
 print(O121_run)
 dev.off()
 
+# for clonal validation boxplot ----------------------------------------
+# noted that this is the script I used to construct the boxplot for clonal validations 
+# location of the metadata and path of the file are local and need to be changed 
+
+metadata = read_excel(path = "/Users/chutikarnchitboonthavisuk/Desktop/Manucript_revision/20240917_validation_candidate.xlsx",sheet = 6)
+metadata_long  = pivot_longer(data = metadata, cols = !c(Gene, sgRNA_sequence), names_to = "replicate", values_to = "ratio")
+gene_order = c("infB", "hldE","pgm","iscR","yheO","cysS", "tusC","serT","glyT","mreB" ,"pcnB","damX","fdx","maeA")
+gene_order2 = c("iscR", "fdx","yheO", "pcnB","cysS","serT","tusC","glyT","mreB", "damX", "infB", "pgm", "hldE", "maeA")
+
+metadata_long  = metadata_long %>% mutate(Gene = factor(Gene, levels = rev(gene_order2)))
+metadata_long$group = ifelse(metadata_long$Gene %in% c("pcnB","damX","fdx"), "Detrimental",
+                             ifelse(metadata_long$Gene == "maeA", "Neutral", "Beneficial"))
+
+p1 = ggplot(metadata_long, aes(x = Gene, y= ratio, fill = group))+
+  geom_boxplot(alpha = 1) +
+  geom_jitter() +
+  scale_y_continuous(trans = "log10",
+                     breaks = trans_breaks("log10", function(x) 10^x),
+                     labels = trans_format("log10", math_format(10^.x))) +
+  geom_hline(yintercept = 1, color = "black")+
+  labs(title = "The ratio of phage titer passaged in bacterial host with gene knockdown",
+       x = "Knockdown gene",
+       y = "Ratio = Phage titer in knockdown gene \n to Phage titer in maeA KD") +
+  theme_bw() +
+  coord_flip() +
+  theme(axis.text.y = element_text(face = "italic", size = 12, color = "black"),
+        axis.text.x = element_text(size = 12, , color = "black"),
+        axis.title = element_text(face = "bold", size = 14, color = "black"),
+        title = element_text(face = "bold", color = "black"))+
+  scale_fill_manual(values = c("#E8175D","#2F9599", "#BEBEBE" )) 
+
+p1
+
+pdf(file = "multiple_passage_reverse.pdf", width = 5.5, height = 12.6)
+p1
+dev.off()
+
+# Calculation of relative abundance and correlation of randomized sgRNAs
+
+# library needed
+library(readxl)
+library(ggplot2)
+library(tidyverse)
+library(patchwork)
+library(hrbrthemes)
+library(dplyr)
+library(ggpmisc)
+
+set.seed(23)
+                     
+# checking the correlation of randomized sgRNA 
 
 
+df1 = read_xlsx(path = "/Users/chutikarnchitboonthavisuk/Desktop/Recheck_phagemid/Recheck_genome_tfu.xlsx", sheet = 5)
+bl21_df = df1[, grep(("sgRNA|Gene|BL21"), names(df1))]
+bl21_df_rand = filter(bl21_df, Gene == "randomized")
 
+gatherdf = bl21_df %>% gather(sample, rawCount, -sgRNA, -Gene)
+# gatherdf = gatherdf %>% separate(sample, c("host", "condition", "rep"), "_")
 
+summarisedf = gatherdf %>% group_by(sample) %>%  summarise(totalRead = sum(rawCount)) 
+gatherdf_rand = bl21_df_rand %>% gather(sample, rawCount, -sgRNA, -Gene)
 
+gatherdf_merge = merge(gatherdf_rand, summarisedf, by = "sample")
+gatherdf_merge$ratioToTotal = gatherdf_merge$rawCount/gatherdf_merge$totalRead
 
+subsetdf = gatherdf_merge[, grep(("sample"), names(df1))]
+df_wider = gatherdf_merge %>% pivot_wider(names_from = c(sample), values_from = ratioToTotal, id_cols = c(sgRNA,Gene))
+df_wider$average_noPhage = rowMeans(df_wider[,3:5])
+df_wider$average_Phage = rowMeans(df_wider[,6:8])
 
+p = ggplot(data = df_wider, aes(x = average_noPhage, y = average_Phage)) +
+  geom_point(shape = 20, alpha = 1) +
+  labs(title = "Correlation of randomized sgRNA in E. coli BL21",
+       x = "BL21_noPhage",
+       y = "BL21_Phage") +
+  stat_poly_line(formula = y ~ x + 0, fullrange = TRUE, se = FALSE, color = "grey", linetype = "dashed") +
+  stat_poly_eq(formula = y ~ x + 0,use_label('R2'))+
+  theme_bw() +
+  theme(panel.grid.major=element_blank())+
+  theme(panel.grid.minor=element_blank())+
+  theme(strip.background=element_blank())+
+  theme(plot.title = element_text(face = "bold"))
+p
 
+# BW25113 
+bw_df = df1[, grep(("sgRNA|Gene|BW"), names(df1))]
+bw_df_rand = filter(bw_df, Gene == "randomized")
+
+gatherdf = bw_df %>% gather(sample, rawCount, -sgRNA, -Gene)
+# gatherdf = gatherdf %>% separate(sample, c("host", "condition", "rep"), "_")
+
+summarisedf = gatherdf %>% group_by(sample) %>%  summarise(totalRead = sum(rawCount)) 
+gatherdf_rand = bw_df_rand %>% gather(sample, rawCount, -sgRNA, -Gene)
+
+gatherdf_merge = merge(gatherdf_rand, summarisedf, by = "sample")
+gatherdf_merge$ratioToTotal = gatherdf_merge$rawCount/gatherdf_merge$totalRead
+
+subsetdf = gatherdf_merge[, grep(("sample"), names(df1))]
+df_wider = gatherdf_merge %>% pivot_wider(names_from = c(sample), values_from = ratioToTotal, id_cols = c(sgRNA,Gene))
+
+df_wider$average_noPhage = rowMeans(df_wider[,3:5])
+df_wider$average_Phage = rowMeans(df_wider[,6:8])
+
+p1 = ggplot(data = df_wider, aes(x = average_noPhage, y = average_Phage)) +
+  geom_point(shape = 20, alpha = 1) +
+  labs(title = "Correlation of randomized sgRNA in E. coli BW25113",
+       x = "BW25113_noPhage",
+       y = "BW25113_Phage") +
+  stat_poly_line(formula = y ~ x + 0, fullrange = TRUE, se = FALSE, color = "grey", linetype = "dashed") +
+  stat_poly_eq(formula = y ~ x + 0,use_label('R2'))+
+  theme_bw() +
+  theme(panel.grid.major=element_blank())+
+  theme(panel.grid.minor=element_blank())+
+  theme(strip.background=element_blank())+
+  theme(plot.title = element_text(face = "bold"))
+p1
 
 
 
